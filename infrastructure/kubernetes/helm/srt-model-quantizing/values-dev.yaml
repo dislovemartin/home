@@ -1,0 +1,67 @@
+global:
+  environment: development
+  storageClass: standard
+  nvidia:
+    enabled: true
+    gpuCount: 1
+
+api:
+  replicaCount: 1
+  image:
+    tag: dev
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+      nvidia.com/gpu: 1
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+      nvidia.com/gpu: 1
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 3
+
+frontend:
+  replicaCount: 1
+  image:
+    tag: dev
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+storage:
+  models:
+    size: 100Gi
+  metrics:
+    size: 20Gi
+  grafana:
+    size: 5Gi
+
+monitoring:
+  prometheus:
+    retention: 7d
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+      limits:
+        cpu: 500m
+        memory: 2Gi
+  grafana:
+    adminPassword: "dev-password"
+
+logging:
+  elasticsearch:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi 

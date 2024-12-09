@@ -1,0 +1,134 @@
+global:
+  environment: production
+  storageClass: standard
+  nvidia:
+    enabled: true
+    gpuCount: 1
+
+api:
+  name: api
+  replicaCount: 3
+  image:
+    repository: srt-model-quantizing/api
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+      nvidia.com/gpu: 1
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+      nvidia.com/gpu: 1
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+frontend:
+  name: frontend
+  replicaCount: 2
+  image:
+    repository: srt-model-quantizing/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 80
+
+storage:
+  models:
+    size: 500Gi
+    accessMode: ReadWriteMany
+  metrics:
+    size: 50Gi
+    accessMode: ReadWriteOnce
+  grafana:
+    size: 10Gi
+    accessMode: ReadWriteOnce
+
+monitoring:
+  prometheus:
+    enabled: true
+    retention: 30d
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 1000m
+        memory: 4Gi
+  grafana:
+    enabled: true
+    adminPassword: "changeme"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 200m
+        memory: 512Mi
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+
+logging:
+  elasticsearch:
+    enabled: true
+    replicas: 3
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+  kibana:
+    enabled: true
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+  hosts:
+    - host: your-domain.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+          port: 80
+        - path: /api
+          pathType: Prefix
+          service: api
+          port: 8000
+        - path: /grafana
+          pathType: Prefix
+          service: grafana
+          port: 3000
+  tls:
+    - secretName: srt-model-quantizing-tls
+      hosts:
+        - your-domain.com 

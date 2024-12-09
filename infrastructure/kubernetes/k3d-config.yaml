@@ -1,0 +1,46 @@
+apiVersion: k3d.io/v1alpha4
+kind: Simple
+metadata:
+  name: srt-cluster
+servers: 1
+agents: 2
+image: rancher/k3s:v1.27.4-k3s1
+ports:
+  - port: 80:80
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443
+    nodeFilters:
+      - loadbalancer
+options:
+  k3d:
+    wait: true
+    timeout: "60s"
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+      - arg: --kubelet-arg=feature-gates=DevicePlugins=true
+        nodeFilters:
+          - agent:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+volumes:
+  - volume: /storage:/data
+    nodeFilters:
+      - agent:*
+  - volume: /var/lib/nvidia-container-runtime/:/var/lib/nvidia-container-runtime/
+    nodeFilters:
+      - agent:*
+  - volume: /usr/bin/nvidia-container-runtime:/usr/bin/nvidia-container-runtime
+    nodeFilters:
+      - agent:*
+  - volume: /usr/lib/nvidia:/usr/lib/nvidia
+    nodeFilters:
+      - agent:*
+
+# NVIDIA GPU configuration
+gpus:
+  - all=true 

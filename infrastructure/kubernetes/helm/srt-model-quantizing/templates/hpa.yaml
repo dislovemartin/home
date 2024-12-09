@@ -1,0 +1,100 @@
+{{- if .Values.api.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.api.name }}
+  labels:
+    {{- include "srt-model-quantizing.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.api.name }}
+  minReplicas: {{ .Values.api.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.api.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.api.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- if .Values.global.nvidia.enabled }}
+    - type: Resource
+      resource:
+        name: nvidia.com/gpu
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.global.nvidia.gpuCount }}
+    {{- end }}
+    # Custom metrics for model inference
+    - type: Pods
+      pods:
+        metric:
+          name: model_inference_time_seconds
+        target:
+          type: AverageValue
+          averageValue: 0.5
+    - type: Object
+      object:
+        metric:
+          name: model_inference_queue_length
+        describedObject:
+          apiVersion: v1
+          kind: Service
+          name: {{ .Values.api.name }}
+        target:
+          type: Value
+          value: 10
+    - type: Object
+      object:
+        metric:
+          name: gpu_memory_usage_percentage
+        describedObject:
+          apiVersion: v1
+          kind: Service
+          name: {{ .Values.api.name }}
+        target:
+          type: Value
+          value: 80
+{{- end }}
+---
+{{- if .Values.frontend.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.frontend.name }}
+  labels:
+    {{- include "srt-model-quantizing.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.frontend.name }}
+  minReplicas: {{ .Values.frontend.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.frontend.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.frontend.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Object
+      object:
+        metric:
+          name: http_request_duration_seconds
+        describedObject:
+          apiVersion: v1
+          kind: Service
+          name: {{ .Values.frontend.name }}
+        target:
+          type: Value
+          value: 1
+{{- end }} 

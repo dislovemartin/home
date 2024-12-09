@@ -1,23 +1,31 @@
 version: '3.8'
 
 services:
-  triton:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - srt-network
+
+  api:
     build:
       context: .
       dockerfile: Dockerfile
-    image: nvcr.io/nvidia/tritonserver:23.12-py3
-    runtime: nvidia
     ports:
       - "8000:8000"
-      - "8001:8001"
-      - "8002:8002"
+    volumes:
+      - ./storage/models:/app/storage/models
+      - ./storage/models/raw:/app/storage/models/raw
+      - ./storage/models/quantized:/app/storage/models/quantized
+      - ./storage/models/repository:/app/storage/models/repository
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-    volumes:
-      - ./models:/models
-      - ./quantized_models:/quantized_models
-    networks:
-      - ai_network
+      - NVIDIA_DRIVER_CAPABILITIES=all
     deploy:
       resources:
         reservations:
@@ -25,81 +33,85 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    restart: unless-stopped
-
-  dcgm-exporter:
-    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04
-    runtime: nvidia
-    ports:
-      - "9400:9400"
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
+    depends_on:
+      - prometheus
+      - grafana
+      - jaeger
     networks:
-      - ai_network
-    restart: unless-stopped
+      - srt-network
 
   prometheus:
     image: prom/prometheus:latest
     ports:
       - "9090:9090"
-    user: "1000:1000"
     volumes:
       - ./prometheus:/etc/prometheus
-      - prometheus_data:/prometheus
+      - ./storage/metrics:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
     networks:
-      - ai_network
-    restart: unless-stopped
+      - srt-network
 
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3000:3000"
+      - "3001:3000"
+    volumes:
+      - ./grafana:/etc/grafana
+      - ./storage/grafana:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
     networks:
-      - ai_network
-    restart: unless-stopped
+      - srt-network
 
   alertmanager:
     image: prom/alertmanager:latest
     ports:
       - "9093:9093"
     volumes:
-      - ./alertmanager:/etc/alertmanager:ro
-      - alertmanager_data:/alertmanager
+      - ./alertmanager:/etc/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
     networks:
-      - ai_network
-    restart: unless-stopped
+      - srt-network
 
-  node-exporter:
-    image: prom/node-exporter:latest
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "16686:16686"
+      - "14250:14250"
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
     networks:
-      - ai_network
-    restart: unless-stopped
+      - srt-network
 
-networks:
-  ai_network:
-    driver: bridge
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP http receiver
+      - "8888:8888"   # Prometheus metrics exposed by the collector
+      - "8889:8889"   # Prometheus exporter metrics
+    depends_on:
+      - jaeger
+    networks:
+      - srt-network
 
 volumes:
-  grafana_data:
   prometheus_data:
-  alertmanager_data: 
+  grafana_data:
+
+networks:
+  srt-network:
+    driver: bridge

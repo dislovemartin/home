@@ -1,0 +1,53 @@
+# Development Environment Configuration
+
+storage:
+  base_path: "./storage"
+  models:
+    raw_dir: "models/raw"
+    quantized_dir: "models/quantized"
+    repository_dir: "models/repository"
+  
+monitoring:
+  log_level: "DEBUG"
+  telemetry_enabled: true
+  metrics_enabled: true
+  tracing_enabled: true
+
+security:
+  jwt_secret: "dev_secret_key"
+  token_expiry: 3600
+  allow_cors: true
+  cors_origins: ["http://localhost:3000"]
+
+services:
+  api:
+    host: "localhost"
+    port: 8000
+    workers: 4
+    reload: true
+  
+  frontend:
+    host: "localhost"
+    port: 3000
+    hot_reload: true
+
+database:
+  type: "sqlite"
+  path: "./storage/dev.db"
+
+cache:
+  type: "redis"
+  url: "redis://localhost:6379"
+  ttl: 3600
+
+model_optimization:
+  default_precision: "fp16"
+  batch_size: 32
+  num_workers: 4
+  use_cuda: true
+  
+development:
+  debug: true
+  profiling: true
+  auto_reload: true
+  test_data_path: "./storage/test_data" 

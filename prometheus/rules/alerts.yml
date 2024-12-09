@@ -1,0 +1,100 @@
+groups:
+  - name: model_alerts
+    rules:
+      - alert: HighInferenceLatency
+        expr: rate(model_inference_time_seconds_sum[5m]) / rate(model_inference_time_seconds_count[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: High inference latency for {{ $labels.model_name }}
+          description: Average inference latency is above 500ms for model {{ $labels.model_name }}
+
+      - alert: HighErrorRate
+        expr: rate(errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: High error rate for {{ $labels.model_name }}
+          description: Error rate is above 10% for model {{ $labels.model_name }}
+
+      - alert: ModelMemoryUsageHigh
+        expr: model_memory_usage_bytes / 1024 / 1024 > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High memory usage for {{ $labels.model_name }}
+          description: Model {{ $labels.model_name }} is using more than 1GB of memory
+
+  - name: gpu_alerts
+    rules:
+      - alert: GPUUtilizationHigh
+        expr: gpu_utilization_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High GPU utilization on device {{ $labels.device_id }}
+          description: GPU utilization is above 90% for 5 minutes
+
+      - alert: GPUMemoryUsageHigh
+        expr: gpu_memory_usage_bytes / 1024 / 1024 / 1024 > 0.9 * 8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High GPU memory usage on device {{ $labels.device_id }}
+          description: GPU memory usage is above 90% of available memory
+
+  - name: system_alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: system_cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High CPU usage
+          description: System CPU usage is above 80% for 5 minutes
+
+      - alert: HighSystemMemoryUsage
+        expr: system_memory_usage_bytes / 1024 / 1024 / 1024 > 0.9 * node_memory_MemTotal_bytes
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High system memory usage
+          description: System memory usage is above 90% of total memory
+
+  - name: service_alerts
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Service {{ $labels.job }} is down
+          description: Service {{ $labels.job }} has been down for more than 1 minute
+
+      - alert: HighRequestLatency
+        expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: High HTTP request latency
+          description: Average HTTP request latency is above 1 second
+
+  - name: data_drift_alerts
+    rules:
+      - alert: InputDistributionDrift
+        expr: abs(rate(input_vector_norm_sum[1h]) / rate(input_vector_norm_count[1h]) - avg_over_time(input_vector_norm_sum[24h] / input_vector_norm_count[24h])) > 0.3
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Input distribution drift detected for {{ $labels.model_name }}
+          description: Significant change in input distribution detected for model {{ $labels.model_name }} 

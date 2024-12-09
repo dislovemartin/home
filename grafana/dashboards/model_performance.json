@@ -5,6 +5,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
+  "id": 2,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -58,7 +59,7 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 500
               }
             ]
           },
@@ -75,13 +76,13 @@
       "id": 1,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": ["mean", "max", "p95"],
           "displayMode": "table",
-          "placement": "bottom",
+          "placement": "right",
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -91,7 +92,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(nv_inference_request_duration_us[5m])/1000",
+          "expr": "rate(model_inference_time_seconds_sum{model_name=~\"$model\"}[5m]) / rate(model_inference_time_seconds_count{model_name=~\"$model\"}[5m]) * 1000",
+          "interval": "",
+          "legendFormat": "{{model_name}} ({{precision}})",
           "refId": "A"
         }
       ],
@@ -106,7 +109,37 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
@@ -118,11 +151,11 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 100
               }
             ]
           },
-          "unit": "percent"
+          "unit": "reqps"
         },
         "overrides": []
       },
@@ -134,28 +167,31 @@
       },
       "id": 2,
       "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
         },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "DCGM_FI_DEV_GPU_UTIL",
+          "expr": "rate(model_inference_requests_total{model_name=~\"$model\",status=\"success\"}[5m])",
+          "interval": "",
+          "legendFormat": "{{model_name}} ({{precision}})",
           "refId": "A"
         }
       ],
-      "title": "GPU Utilization",
-      "type": "gauge"
+      "title": "Model Inference Requests",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -204,10 +240,14 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.1
               }
             ]
           },
-          "unit": "reqps"
+          "unit": "percentunit"
         },
         "overrides": []
       },
@@ -222,11 +262,11 @@
         "legend": {
           "calcs": ["mean", "max"],
           "displayMode": "table",
-          "placement": "bottom",
+          "placement": "right",
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -236,11 +276,13 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(nv_inference_request[5m])",
+          "expr": "rate(errors_total{model_name=~\"$model\"}[5m]) / rate(model_inference_requests_total{model_name=~\"$model\"}[5m])",
+          "interval": "",
+          "legendFormat": "{{model_name}} ({{type}})",
           "refId": "A"
         }
       ],
-      "title": "Request Rate",
+      "title": "Model Error Rate",
       "type": "timeseries"
     },
     {
@@ -293,7 +335,7 @@
               }
             ]
           },
-          "unit": "bytes"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -308,11 +350,11 @@
         "legend": {
           "calcs": ["mean", "max"],
           "displayMode": "table",
-          "placement": "bottom",
+          "placement": "right",
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -322,20 +364,50 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "DCGM_FI_DEV_FB_USED",
+          "expr": "rate(input_vector_norm_sum{model_name=~\"$model\"}[5m]) / rate(input_vector_norm_count{model_name=~\"$model\"}[5m])",
+          "interval": "",
+          "legendFormat": "{{model_name}}",
           "refId": "A"
         }
       ],
-      "title": "GPU Memory Usage",
+      "title": "Input Vector Norm",
       "type": "timeseries"
     }
   ],
   "refresh": "5s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["model-performance", "gpu"],
+  "tags": ["model", "performance"],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(model_inference_time_seconds_sum, model_name)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Model",
+        "multi": true,
+        "name": "model",
+        "options": [],
+        "query": {
+          "query": "label_values(model_inference_time_seconds_sum, model_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-1h",
@@ -343,7 +415,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Model Performance Dashboard",
+  "title": "Model Performance",
+  "uid": "model_performance",
   "version": 1,
   "weekStart": ""
 } 

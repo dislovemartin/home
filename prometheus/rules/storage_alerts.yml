@@ -1,0 +1,52 @@
+groups:
+  - name: storage_alerts
+    rules:
+      - alert: StorageSpaceCritical
+        expr: |
+          100 * sum(storage_usage_bytes) / storage_total_bytes > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Storage space usage is critical
+          description: Storage space usage is above 90% (current value {{ $value }}%)
+
+      - alert: StorageSpaceWarning
+        expr: |
+          100 * sum(storage_usage_bytes) / storage_total_bytes > 75
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Storage space usage is high
+          description: Storage space usage is above 75% (current value {{ $value }}%)
+
+      - alert: ModelStorageImbalance
+        expr: |
+          max(storage_usage_bytes) by (type) / sum(storage_usage_bytes) > 0.7
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: Storage usage is imbalanced
+          description: Storage type {{ $labels.type }} is using more than 70% of total storage
+
+      - alert: UnusedModels
+        expr: |
+          storage_model_count > 0 and rate(model_inference_requests_total[7d]) == 0
+        for: 24h
+        labels:
+          severity: info
+        annotations:
+          summary: Unused models detected
+          description: Models in {{ $labels.type }} have not been used in the last 7 days
+
+      - alert: RapidStorageGrowth
+        expr: |
+          rate(storage_usage_bytes[1h]) > 1024 * 1024 * 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Rapid storage growth detected
+          description: Storage is growing faster than 100MB per hour in {{ $labels.type }} 
