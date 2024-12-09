@@ -1,0 +1,86 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+rule_files:
+  - "/etc/prometheus/rules/alert.rules"
+
+scrape_configs:
+  - job_name: 'triton'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['triton:8002']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}'
+
+  - job_name: 'model_metrics'
+    metrics_path: '/v2/metrics'
+    static_configs:
+      - targets: ['triton:8001']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}'
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}'
+
+  - job_name: 'gpu_metrics'
+    scrape_interval: 1s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['dcgm-exporter:9400']
+    metric_relabel_configs:
+      - source_labels: [GPU_I_ID]
+        target_label: gpu_id
+      - source_labels: [GPU_I_UUID]
+        target_label: gpu_uuid
+      - source_labels: [GPU_I_NAME]
+        target_label: gpu_name
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}'
+
+  - job_name: 'nvidia_smi'
+    scrape_interval: 1s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['nvidia-smi-exporter:9835']
+    metric_relabel_configs:
+      - source_labels: [uuid]
+        target_label: gpu_uuid
+      - source_labels: [name]
+        target_label: gpu_name
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}'
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}' 

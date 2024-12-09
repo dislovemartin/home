@@ -1,0 +1,68 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "soln"
+version = "0.1.0"
+description = "lota ai platform_system"
+authors = ["dislovemartin info@soln.ai"]
+readme = "README.md"
+packages = [{ include = "srt_model_quantizing" }]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<4.0"
+torch = ">=2.1.0"
+transformers = ">=4.35.0"
+onnx = ">=1.14.0"
+tritonclient = { version = ">=2.41.0", extras = ["all"] }
+tensorrt = { version = ">=8.6.1", markers = "platform_system == 'Linux'" }
+tqdm = ">=4.66.1"
+pydantic = ">=2.5.2"
+typer = ">=0.9.0"
+rich = ">=13.7.0"
+fastapi = ">=0.109.0"
+uvicorn = ">=0.27.0"
+prometheus-client = ">=0.19.0"
+python-jose = { version = ">=3.3.0", extras = ["cryptography"] }
+python-multipart = ">=0.0.6"
+nvidia-cuda-runtime-cu12 = "^12.1.105"
+nvidia-cuda-nvrtc-cu12 = "^12.1.105"
+nvidia-cublas-cu12 = "^12.1.3.1"
+nvidia-cudnn-cu12 = "^8.9.2.26"
+nvidia-pyindex = "^1.0.9"
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+priority = "explicit"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+black = "^23.11.0"
+isort = "^5.12.0"
+flake8 = "^6.1.0"
+mypy = "^1.7.1"
+pytest-asyncio = "^0.23.3"
+pytest-cov = "^4.1.0"
+locust = "^2.20.1"
+
+[tool.poetry.scripts]
+srt-quantize = "srt_model_quantizing.cli:app"
+srt-serve = "srt_model_quantizing.server:serve"
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=srt_model_quantizing --cov-report=term-missing"
