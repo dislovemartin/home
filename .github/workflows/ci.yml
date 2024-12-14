@@ -2,84 +2,118 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUSTFLAGS: "-D warnings"
 
 jobs:
-  test:
+  backend:
+    name: Backend Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+    services:
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: aimodels_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: 1.4.0
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-        
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v3
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
-        
-    - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root --with dev
-      
-    - name: Install project
-      run: poetry install --no-interaction
-      
-    - name: Run tests
-      run: |
-        poetry run pytest tests/ --cov=srt_model_quantizing --cov-report=xml
-        
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: true
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  lint:
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "backend-deps"
+
+      - name: Check formatting
+        working-directory: ./backend
+        run: cargo fmt --check
+
+      - name: Run clippy
+        working-directory: ./backend
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aimodels_test
+          RUST_LOG: debug
+        run: cargo test --verbose
+
+      - name: Build backend
+        working-directory: ./backend
+        run: cargo build --release
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: backend/target/release/aimodels-backend
+          retention-days: 1
+
+  frontend:
+    name: Frontend Tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
-        
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: 1.4.0
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-        
-    - name: Install dependencies
-      run: poetry install --no-interaction --no-root --with dev
-      
-    - name: Run black
-      run: poetry run black . --check
-      
-    - name: Run isort
-      run: poetry run isort . --check-only
-      
-    - name: Run flake8
-      run: poetry run flake8 .
-      
-    - name: Run mypy
-      run: poetry run mypy . 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Check types
+        working-directory: ./frontend
+        run: npm run typecheck
+
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: ./frontend
+        run: npm test -- --coverage
+
+      - name: Build frontend
+        working-directory: ./frontend
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 1

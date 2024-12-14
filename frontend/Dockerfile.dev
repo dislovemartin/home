@@ -1,0 +1,20 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy TypeScript config files
+COPY tsconfig*.json ./
+COPY vite.config.ts ./
+
+# Copy source code
+COPY . .
+
+# Expose development port
+EXPOSE 5173
+
+# Start development server
+CMD ["npm", "run", "dev"] 

@@ -1,29 +1,23 @@
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import { resolve } from 'path';
+import type { UserConfig } from 'vite';
+import { defineConfig } from 'vite';
 
-// https://vitejs.dev/config/
-export default defineConfig({
+const config: UserConfig = {
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@pages': path.resolve(__dirname, './src/pages'),
-      '@hooks': path.resolve(__dirname, './src/hooks'),
-      '@store': path.resolve(__dirname, './src/store'),
-      '@api': path.resolve(__dirname, './src/api'),
-      '@utils': path.resolve(__dirname, './src/utils'),
-      '@types': path.resolve(__dirname, './src/types'),
-      '@assets': path.resolve(__dirname, './src/assets'),
+      '@': resolve(__dirname, './src'),
     },
   },
   server: {
-    port: 3000,
+    host: true,
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_API_URL || 'http://localhost:3000',
         changeOrigin: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
@@ -31,14 +25,19 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    minify: 'terser',
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          mui: ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
-          charts: ['chart.js', 'react-chartjs-2'],
+          stripe: ['@stripe/stripe-js', '@stripe/react-stripe-js'],
         },
       },
     },
   },
-}); 
+  define: {
+    'process.env.VITE_STRIPE_PUBLIC_KEY': JSON.stringify(process.env.VITE_STRIPE_PUBLIC_KEY),
+  },
+};
+
+export default defineConfig(config);

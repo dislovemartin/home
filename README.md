@@ -1,129 +1,80 @@
-# SRT Model Quantizing
+# AI Model Platform
 
-A comprehensive pipeline for downloading, quantizing, and managing AI models with support for both local and cloud deployments.
+A modern, high-performance platform for discovering, managing, and interacting with AI models.
+
+## Features
+
+- Browse and discover AI models
+- Detailed model information and metrics
+- User authentication and authorization
+- Model search and filtering
+- Performance tracking and analytics
+
+## Tech Stack
+
+### Backend
+- Rust with Axum framework
+- PostgreSQL database
+- Redis for caching
+- JWT for authentication
+
+### Frontend
+- React with TypeScript
+- Material-UI components
+- Redux Toolkit for state management
+- React Query for data fetching
 
 ## Project Structure
 
 ```
 .
-├── infrastructure/
-│   ├── kubernetes/        # Kubernetes configurations
-│   │   ├── helm/         # Helm charts
-│   │   ├── k3d-config.yaml
-│   │   └── kind-config.yaml
-│   ├── docker/           # Docker configurations
-│   └── terraform/        # Cloud infrastructure as code
-├── storage/
-│   ├── models/          # Original models
-│   ├── quantized/       # Quantized models
-│   ├── cache/          # Temporary cache
-│   └── temp/           # Temporary files
-├── srt_model_quantizing/  # Main application code
-├── scripts/              # Utility scripts
-├── docs/                 # Documentation
-└── tests/               # Test suite
+├── backend/           # Rust backend service
+├── frontend/         # React frontend application
+├── docker/           # Docker configuration files
+├── docs/            # Documentation
+└── scripts/         # Development and deployment scripts
 ```
 
-## Prerequisites
+## Development Setup
 
-- Python 3.8+
-- Docker
-- Kubernetes CLI (kubectl)
-- Helm
-- Either k3d or kind for local development
-- Terraform (for cloud deployment)
-- AWS CLI (for cloud deployment)
+### Prerequisites
+- Rust (latest stable)
+- Node.js (v18+)
+- PostgreSQL
+- Docker and Docker Compose
+- Git
 
-## Quick Start
+### Getting Started
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-org/srt-model-quantizing.git
-   cd srt-model-quantizing
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -e .
-   ```
-
-3. Choose your deployment method:
-
-   ### Local Development
-   ```bash
-   # Set environment
-   export DEPLOY_ENV=local
-   
-   # Deploy
-   ./scripts/deploy.sh
-   ```
-
-   ### Cloud Deployment (AWS)
-   ```bash
-   # Configure AWS credentials
-   aws configure
-   
-   # Set environment
-   export DEPLOY_ENV=cloud
-   export AWS_REGION=us-west-2  # or your preferred region
-   
-   # Deploy
-   ./scripts/deploy.sh
-   ```
-
-## Features
-
-- Automated model downloading from Hugging Face
-- Efficient model quantization
-- Support for both NVIDIA CUDA and AMD ROCm GPUs
-- Comprehensive monitoring and logging
-- Scalable deployment options (local and cloud)
-- Storage management and cleanup policies
-
-## Configuration
-
-- Environment variables can be set in `.env.local` or `.env.cloud`
-- Kubernetes configurations are managed through Helm charts
-- Infrastructure configurations are managed through Terraform
-
-## Development
-
-1. Set up local development environment:
-   ```bash
-   # Create local cluster
-   k3d cluster create -c infrastructure/kubernetes/k3d-config.yaml
-   
-   # Deploy application
-   DEPLOY_ENV=local ./scripts/deploy.sh
-   ```
-
-2. Access the application:
-   - Web UI: http://localhost
-   - API: http://localhost/api
-   - Monitoring: http://localhost/grafana
-
-## Testing
-
 ```bash
-# Run tests
-pytest
+git clone <repository-url>
+cd ai-model-platform
+```
 
-# Run with coverage
-pytest --cov=srt_model_quantizing
+2. Set up the backend:
+```bash
+cd backend
+cargo build
+```
+
+3. Set up the frontend:
+```bash
+cd frontend
+npm install
+```
+
+4. Start the development environment:
+```bash
+docker-compose up -d  # Starts PostgreSQL and Redis
+cd backend && cargo run
+cd frontend && npm start
 ```
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For support, please open an issue in the GitHub repository or contact the maintainers.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 

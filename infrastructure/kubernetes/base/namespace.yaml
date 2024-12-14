@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: srt-model-quantizing
-  labels:
-    name: srt-model-quantizing
-    environment: production 

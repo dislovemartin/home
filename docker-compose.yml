@@ -4,114 +4,49 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
-      - "3000:80"
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:3000
+      - VITE_STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
     depends_on:
-      - api
-    networks:
-      - srt-network
+      - backend
 
-  api:
+  backend:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ./backend
     ports:
-      - "8000:8000"
-    volumes:
-      - ./storage/models:/app/storage/models
-      - ./storage/models/raw:/app/storage/models/raw
-      - ./storage/models/quantized:/app/storage/models/quantized
-      - ./storage/models/repository:/app/storage/models/repository
+      - "3000:3000"
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=all
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/aimodels
+      - RUST_LOG=debug
+      - RUST_BACKTRACE=1
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
     depends_on:
-      - prometheus
-      - grafana
-      - jaeger
-    networks:
-      - srt-network
+      - db
 
-  prometheus:
-    image: prom/prometheus:latest
+  db:
+    image: postgres:14-alpine
     ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus:/etc/prometheus
-      - ./storage/metrics:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-    networks:
-      - srt-network
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./grafana:/etc/grafana
-      - ./storage/grafana:/var/lib/grafana
+      - "5432:5432"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel
-    networks:
-      - srt-network
-
-  alertmanager:
-    image: prom/alertmanager:latest
-    ports:
-      - "9093:9093"
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=aimodels
     volumes:
-      - ./alertmanager:/etc/alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-    networks:
-      - srt-network
-
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    ports:
-      - "6831:6831/udp"
-      - "6832:6832/udp"
-      - "16686:16686"
-      - "14250:14250"
-    environment:
-      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
-    networks:
-      - srt-network
-
-  otel-collector:
-    image: otel/opentelemetry-collector:latest
-    command: ["--config=/etc/otel-collector-config.yaml"]
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
-    ports:
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP http receiver
-      - "8888:8888"   # Prometheus metrics exposed by the collector
-      - "8889:8889"   # Prometheus exporter metrics
-    depends_on:
-      - jaeger
-    networks:
-      - srt-network
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  prometheus_data:
-  grafana_data:
-
-networks:
-  srt-network:
-    driver: bridge
+  postgres_data:
